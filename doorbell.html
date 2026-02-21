@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Doorbell Face Recognition</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #0a0a14; --card:#11111f; --surface: rgba(20,20,35,0.68);
+  --text:#e2e8f0; --text-muted:#94a3b8;
+  --primary:#7c3aed; --accent:#a78bfa; --success:#34d399; --warning:#fbbf24; --danger:#f87171;
+  --radius-lg:20px; --radius:16px; --blur:16px; --glow:0 0 24px rgba(124,58,237,0.22);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:'Inter', sans-serif; background: var(--bg); color: var(--text);
+  min-height: 100dvh; display:grid; place-items:center; padding:1.5rem;
+  background-image: radial-gradient(circle at 12% 15%, rgba(124,58,237,0.12) 0%, transparent 28%),
+                    radial-gradient(circle at 88% 82%, rgba(167,139,250,0.10) 0%, transparent 42%);
+  background-attachment: fixed;
+}
+.container {
+  width:100%; max-width:520px; background: var(--surface); border-radius: var(--radius-lg);
+  padding:2.8rem 2.2rem; box-shadow: 0 30px 70px -20px rgba(0,0,0,0.75), inset 0 0 0 1px rgba(124,58,237,0.16), var(--glow);
+  border:1px solid rgba(124,58,237,0.24); backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur)); animation: fadeIn 0.7s ease-out;
+}
+@keyframes fadeIn { from{opacity:0; transform:translateY(18px);} to{opacity:1; transform:translateY(0);} }
+
+h1 { font-size:2.5rem; font-weight:800; text-align:center; margin-bottom:0.5rem;
+     background: linear-gradient(90deg,#c4b5fd,#a78bfa,#e0e7ff,#c4b5fd); background-size:200% auto;
+     -webkit-background-clip:text; -webkit-text-fill-color:transparent; animation: gradientFlow 7s linear infinite;}
+@keyframes gradientFlow {0%,100%{background-position:0% center;}50%{background-position:200% center;}}
+
+.subtitle { color: var(--text-muted); text-align:center; font-size:1rem; margin-bottom:2rem; }
+
+.upload-area { border:2px dashed var(--primary); border-radius:var(--radius); padding:3rem 1.8rem; text-align:center;
+              background: rgba(124,58,237,0.06); cursor:pointer; transition:all 0.3s ease; position:relative; overflow:hidden; }
+.upload-area:hover, .upload-area.active { border-color: var(--accent); background: rgba(124,58,237,0.14); transform:scale(1.012); box-shadow: var(--glow);}
+.upload-icon { font-size:4rem; margin-bottom:1rem; color: var(--primary); transition: all 0.4s ease; }
+.upload-area:hover .upload-icon, .upload-area.active .upload-icon { transform: scale(1.18) rotate(12deg); color: var(--accent); }
+
+#imageInput { display:none; }
+#imagePreview { display:none; margin:1.5rem auto 1rem; max-width:100%; max-height:240px; border-radius:var(--radius);
+                box-shadow:0 12px 32px rgba(0,0,0,0.55); transition: all 0.45s ease; opacity:0; transform:scale(0.94);}
+#imagePreview.show { opacity:1; transform:scale(1); }
+
+.file-name { margin-top:1rem; font-size:0.95rem; color: var(--accent); word-break: break-word; }
+
+.button-group { display:flex; gap:1rem; margin-top:1.5rem; flex-wrap:wrap; }
+button { flex:1; min-width:140px; padding:1rem; font-size:1em; font-weight:600; border:none; border-radius:14px; cursor:pointer; transition:all 0.35s ease;}
+#predictBtn { background: linear-gradient(135deg,var(--primary),var(--accent)); color:white; box-shadow:0 12px 30px rgba(124,58,237,0.42);}
+#predictBtn:hover:not(:disabled){ transform:translateY(-4px); box-shadow:0 24px 45px rgba(124,58,237,0.58);}
+#clearBtn { background: rgba(244,63,94,0.18); color:#fda4af; border:1px solid rgba(244,63,94,0.35);}
+#clearBtn:hover:not(:disabled) { background: rgba(244,63,94,0.28); transform:translateY(-3px);}
+button:disabled { opacity:0.5; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
+
+#result { margin-top:2rem; padding:1.5rem; background: rgba(15,23,42,0.75); border-radius:var(--radius);
+          border:1px solid rgba(124,58,237,0.22); backdrop-filter: blur(10px); line-height:1.6; font-size:1rem; min-height:100px; white-space:pre-line; transition:all 0.4s ease;}
+.status-icon { font-size:1.2rem; margin-right:0.5rem; vertical-align:middle; }
+.success { color: var(--success); } .warning { color: var(--warning); } .error { color: var(--danger); font-weight:500; }
+
+@media (max-width:500px) { .container{padding:2rem 1.5rem;} h1{font-size:2rem;} .button-group{flex-direction:column;gap:0.8rem;} }
+
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>SAFE</h1>
+  <div class="subtitle">Doorbell Face Memory — Instant visitor recognition</div>
+
+  <label for="imageInput" class="upload-area" id="dropZone">
+    <div class="upload-icon">📸</div>
+    <div>Drop photo here or click to select</div>
+    <div id="fileName" class="file-name"></div>
+  </label>
+
+  <input type="file" id="imageInput" accept="image/*">
+
+  <img id="imagePreview" src="" alt="Face preview">
+
+  <div class="button-group">
+    <button id="predictBtn" disabled>Predict Person</button>
+    <button id="clearBtn" disabled>Clear</button>
+  </div>
+
+  <div id="result"></div>
+</div>
+
+<script>
+const elements = {
+  input: document.getElementById('imageInput'),
+  dropZone: document.getElementById('dropZone'),
+  fileName: document.getElementById('fileName'),
+  preview: document.getElementById('imagePreview'),
+  predictBtn: document.getElementById('predictBtn'),
+  clearBtn: document.getElementById('clearBtn'),
+  result: document.getElementById('result')
+};
+
+let currentFile = null;
+function resetUI(){
+  elements.input.value=''; currentFile=null; 
+  elements.preview.classList.remove('show'); elements.preview.style.display='none'; elements.preview.src='';
+  elements.fileName.textContent=''; elements.result.innerHTML='';
+  elements.predictBtn.disabled=true; elements.clearBtn.disabled=true; elements.predictBtn.innerHTML='Predict Person';
+}
+
+function setFile(file){
+  if(!file?.type?.startsWith('image/')){ elements.result.innerHTML='<span class="error">⚠️ Please select an image file</span>'; return;}
+  currentFile=file;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    elements.preview.src=e.target.result; elements.preview.style.display='block';
+    setTimeout(()=>elements.preview.classList.add('show'),80);
+    elements.fileName.textContent=file.name.length>38? file.name.slice(0,35)+'...': file.name;
+    elements.predictBtn.disabled=false; elements.clearBtn.disabled=false;
+    elements.result.innerHTML='<span class="warning">ℹ️ Image loaded — ready to recognize</span>';
+  };
+  reader.readAsDataURL(file);
+}
+
+elements.input.addEventListener('change',()=>{ if(elements.input.files[0]) setFile(elements.input.files[0]);});
+['dragover','dragenter'].forEach(ev=>{ elements.dropZone.addEventListener(ev,e=>{ e.preventDefault(); elements.dropZone.classList.add('active'); }); });
+['dragleave','drop'].forEach(ev=>{ elements.dropZone.addEventListener(ev,e=>{ e.preventDefault(); elements.dropZone.classList.remove('active'); }); });
+elements.dropZone.addEventListener('drop',e=>{ if(e.dataTransfer?.files?.[0]){ elements.input.files=e.dataTransfer.files; setFile(e.dataTransfer.files[0]); } });
+
+async function predict(){
+  if(!currentFile) return;
+  elements.predictBtn.disabled=true; elements.predictBtn.innerHTML='🔄 Recognizing…'; elements.result.innerHTML='';
+  const formData=new FormData(); formData.append("image",currentFile);
+  try{
+    const res=await fetch("/predict_person/", {method:"POST", body:formData});
+    const data=await res.json();
+    if(data.status==='error'){ elements.result.innerHTML=`<span class="error">❌ ${data.message||'Recognition failed'}</span>`; }
+    else{
+      const unknown=/unknown/i.test(data.name||'');
+      elements.result.innerHTML=`
+<span class="${unknown?'warning':'success'}">
+  <span class="status-icon">${unknown?'⚠️':'✅'}</span> ${unknown?'No match':'Match found'}
+</span>
+<strong>Name:</strong> ${data.name||'—'}
+<strong>Relation:</strong> ${data.relation||'—'}
+<strong>Distance:</strong> ${Number(data.distance??0).toFixed(3)}
+      `;
+    }
+  } catch(err){ elements.result.innerHTML='<span class="error">❌ Could not connect to server</span>'; console.error(err);}
+  finally{ elements.predictBtn.disabled=!currentFile; elements.predictBtn.innerHTML='Predict Person'; }
+}
+
+elements.predictBtn.onclick=predict;
+elements.clearBtn.onclick=resetUI;
+</script>
+
+</body>
+</html>
